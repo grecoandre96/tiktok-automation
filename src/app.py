@@ -131,7 +131,9 @@ with col2:
         base_name = os.path.basename(video_path).split('.')[0]
         temp_audio = f"assets/temp/{base_name}_orig.mp3"
         temp_voice = f"assets/temp/{base_name}_new_voice.mp3"
-        final_filename = f"remix_{base_name}.mp4"
+        
+        # Default filename based on video ID and style
+        default_name = f"remix_{base_name}_{script_style}.mp4"
 
         # 1. GENERATE / REWRITE SCRIPT
         st.markdown("#### 1. Script Generation")
@@ -160,8 +162,14 @@ with col2:
                 
                 # 3. FINAL REMIX
                 st.markdown("#### 3. Final Assembly")
+                final_filename = st.text_input("Final Output Filename:", value=default_name)
+                
+                # Ensure the filename ends with .mp4
+                if not final_filename.endswith(".mp4"):
+                    final_filename += ".mp4"
+
                 if st.button("🎬 Create Final Video"):
-                    with st.spinner("Assembling video..."):
+                    with st.spinner(f"Assembling video as {final_filename}..."):
                         final_path = st.session_state.editor.remix_video(video_path, temp_voice, final_filename)
                         st.session_state.remixed_path = final_path
                         st.balloons()
