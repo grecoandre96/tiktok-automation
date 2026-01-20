@@ -9,7 +9,7 @@ from downloader import download_tiktok_video
 from dotenv import load_dotenv
 import asyncio
 
-# Add FFmpeg to PATH (Critical for Windows users who installed via winget)
+# Add FFmpeg to PATH
 ffmpeg_path = r"C:\Users\utente\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.0.1-full_build\bin"
 if os.path.exists(ffmpeg_path):
     os.environ["PATH"] += os.pathsep + ffmpeg_path
@@ -25,6 +25,8 @@ if 'editor' not in st.session_state:
     st.session_state.editor = VideoEditor()
 
 # Session state for workflow
+if 'video_list' not in st.session_state:
+    st.session_state.video_list = []
 if 'current_video' not in st.session_state:
     st.session_state.current_video = None
 if 'video_path' not in st.session_state:
@@ -44,65 +46,66 @@ with st.sidebar:
     
     st.divider()
     
-    if st.button("🔎 Find Next Viral Video"):
-        with st.spinner("Launching Scraper... check your taskbar for a new window!"):
-            # Clear previous state
+    if st.button("🔎 Search Viral Videos"):
+        with st.spinner("Searching TikTok for top matches..."):
+            st.session_state.video_list = []
             st.session_state.current_video = None
             st.session_state.video_path = None
             st.session_state.remixed_path = None
             
-            # Use subprocess to run the scraper standalone
             try:
-                # We use sys.executable to use the current venv's python
-                cmd = [
-                    sys.executable, 
-                    "src/standalone_scraper.py", 
-                    query, 
-                    str(min_views), 
-                    str(max_views)
-                ]
-                # Run the command and capture output
+                cmd = [sys.executable, "src/standalone_scraper.py", query, str(min_views), str(max_views)]
                 result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-                
-                # The script should print JSON to stdout
                 output = result.stdout.strip()
-                if output and output != "null":
-                    # Find the last line in case there are debug prints
+                if output:
                     json_str = output.splitlines()[-1]
-                    video_data = json.loads(json_str)
-                    st.session_state.current_video = video_data
-                    st.success(f"Found: {video_data['url']}")
-                else:
-                    st.warning("No video found or scraper was closed.")
+                    videos = json.loads(json_str)
+                    if videos:
+                        st.session_state.video_list = videos
+                        st.success(f"Found {len(videos)} potential viral videos!")
+                    else:
+                        st.warning("No videos found matching your criteria.")
             except Exception as e:
-                st.error(f"Scraper error: {e}")
+                st.error(f"Search error: {e}")
 
 # Main Area
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("📥 Step 2: Download & Preview")
+    st.subheader("📥 Step 2: Choose & Download")
+    
+    if st.session_state.video_list:
+        st.write("Select a video to process:")
+        for idx, v in enumerate(st.session_state.video_list):
+            cols = st.columns([3, 1])
+            with cols[0]:
+                st.markdown(f"**Video {idx+1}:** {v['url']} \n\n (Views: {v['views']:,})")
+            with cols[1]:
+                if st.button(f"Select #{idx+1}", key=f"sel_{idx}"):
+                    st.session_state.current_video = v
+                    st.session_state.video_path = None # Reset download path for new selection
+        
+        st.divider()
+        
     if st.session_state.current_video:
         v_data = st.session_state.current_video
-        st.info(f"**Found Video:** {v_data['url']} \n\n **Views:** {v_data['views']}")
+        st.info(f"**Selected:** {v_data['url']}")
         
-        if st.button("⬇️ Download This Video"):
-            with st.spinner("Downloading video (Attempting bypass)..."):
+        if st.button("⬇️ Download Selected Video"):
+            with st.spinner("Downloading video..."):
                 path = os.path.join("assets/downloaded", v_data['filename'])
-                success = download_tiktok_video(v_data['url'], path)
-                if success:
+                if download_tiktok_video(v_data['url'], path):
                     st.session_state.video_path = path
                     st.success("Download complete!")
                 else:
-                    st.error("Download failed. TikTok is blocking all automated methods for this video.")
+                    st.error("Download failed.")
         
         if st.session_state.video_path and os.path.exists(st.session_state.video_path):
             st.video(st.session_state.video_path)
-            
             if st.button("✨ START REMIX PROCESS"):
                 st.session_state.processing = True
-    else:
-        st.info("Use the sidebar to fetch a video first.")
+    elif not st.session_state.video_list:
+        st.info("Use the sidebar to search for videos.")
 
 with col2:
     st.subheader("📤 Step 3: AI Remix & Result")
@@ -126,10 +129,11 @@ with col2:
                 new_script = st.session_state.ai_engine.rewrite_script(original_text)
                 st.text_area("New AI Script:", new_script, height=100)
                 
-                st.write("🎙️ Generating AI Voiceover...")
+                st.write("🎙️ Generating Italian Voiceover...")
                 asyncio.run(st.session_state.ai_engine.generate_voiceover(new_script, temp_voice))
                 
                 st.write("🎬 Reassembling final video...")
+                # No mask anymore as per user request
                 final_path = st.session_state.editor.remix_video(video_path, temp_voice, final_filename)
                 
                 st.session_state.remixed_path = final_path
@@ -150,4 +154,4 @@ with col2:
         st.info("The remixed video will appear here.")
 
 st.markdown("---")
-st.caption("Workflow: Find One -> Download -> Remix -> Done.")
+st.caption("Workflow: Search -> Choose -> Download -> Remix.")

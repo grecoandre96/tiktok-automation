@@ -1,4 +1,4 @@
-from moviepy import VideoFileClip, AudioFileClip, TextClip, CompositeVideoClip
+from moviepy import VideoFileClip, AudioFileClip, CompositeVideoClip
 import os
 
 class VideoEditor:
@@ -24,8 +24,6 @@ class VideoEditor:
         # Load new audio
         audio = AudioFileClip(voiceover_path)
         
-        # If audio is longer than video, we might want to loop or trim.
-        # For now, let's just match the video duration.
         if audio.duration > video.duration:
             audio = audio.with_duration(video.duration)
         
@@ -33,7 +31,6 @@ class VideoEditor:
         final_video = video.with_audio(audio)
         
         output_path = os.path.join(self.output_dir, output_filename)
-        # codec libx264 is standard for web
         final_video.write_videofile(output_path, codec="libx264", audio_codec="aac")
         
         video.close()

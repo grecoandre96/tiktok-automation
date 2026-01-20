@@ -6,15 +6,13 @@ import json
 import re
 import os
 
-async def search_tiktok(query, min_views, max_views):
-    # Path per la sessione persistente
+async def search_tiktok(query, min_views, max_views, max_results=10):
     user_data_dir = os.path.abspath(os.path.join(os.getcwd(), "tiktok_session"))
     if not os.path.exists(user_data_dir):
         os.makedirs(user_data_dir)
 
     async with async_playwright() as p:
         try:
-            # Utilizziamo un contesto persistente per salvare i login
             browser_context = await p.chromium.launch_persistent_context(
                 user_data_dir,
                 headless=False,
@@ -27,24 +25,17 @@ async def search_tiktok(query, min_views, max_views):
             await Stealth().apply_stealth_async(page)
             
             search_url = f"https://www.tiktok.com/search/video?q={query.replace(' ', '%20')}"
-            print(f"DEBUG: Navigating to {search_url}", file=sys.stderr)
-            
             await page.goto(search_url, wait_until="load", timeout=90000)
             await page.bring_to_front()
             
-            # Aspettiamo i risultati (diamo tempo all'utente di fare login se serve)
+            # Wait for results or captcha
             try:
-                await page.wait_for_selector('[data-e2e="search_video-item"]', timeout=60000)
+                await page.wait_for_selector('[data-e2e="search_video-item"]', timeout=30000)
             except:
-                # Se non li trova, forse serve il login o captcha. Aspettiamo altri 20 secondi manuali.
-                print("DEBUG: Risultati non trovati, attendo interazione manuale...", file=sys.stderr)
+                print("DEBUG: Timeout waiting for initial results. Waiting for manual interaction...", file=sys.stderr)
                 await asyncio.sleep(20)
-                # Riprova a vedere se dopo l'interazione sono apparsi
-                if not await page.query_selector('[data-e2e="search_video-item"]'):
-                    await browser_context.close()
-                    return None
             
-            videos = await page.query_selector_all('[data-e2e="search_video-item"]')
+            results = []
             
             def parse_views(view_text):
                 if not view_text: return 0
@@ -55,34 +46,49 @@ async def search_tiktok(query, min_views, max_views):
                     return int(re.sub(r'[^\d]', '', view_text))
                 except: return 0
 
-            found_res = None
+            # Scroll a bit to load more content if needed
+            for _ in range(3):
+                await page.mouse.wheel(0, 1500)
+                await asyncio.sleep(1)
+
+            videos = await page.query_selector_all('[data-e2e="search_video-item"]')
+            
             for v in videos:
-                view_elem = await v.query_selector('[data-e2e="search-card-like-container"]')
-                if not view_elem: view_elem = await v.query_selector('strong, .video-count')
-                
-                if view_elem:
-                    view_text = await view_elem.inner_text()
-                    views = parse_views(view_text)
-                    if min_views <= views <= max_views:
-                        link_elem = await v.query_selector('a')
-                        video_url = await link_elem.get_attribute('href')
-                        if video_url and video_url.startswith('/'):
-                            video_url = f"https://www.tiktok.com{video_url}"
+                if len(results) >= max_results:
+                    break
+                    
+                try:
+                    view_elem = await v.query_selector('[data-e2e="search-card-like-container"]')
+                    if not view_elem: view_elem = await v.query_selector('strong, .video-count')
+                    
+                    if view_elem:
+                        view_text = await view_elem.inner_text()
+                        views = parse_views(view_text)
                         
-                        v_id = video_url.split('/')[-1].split('?')[0]
-                        found_res = {
-                            "id": v_id,
-                            "url": video_url,
-                            "views": views,
-                            "filename": f"{v_id}.mp4"
-                        }
-                        break
+                        if min_views <= views <= max_views:
+                            link_elem = await v.query_selector('a')
+                            video_url = await link_elem.get_attribute('href')
+                            if video_url and video_url.startswith('/'):
+                                video_url = f"https://www.tiktok.com{video_url}"
+                            
+                            v_id = video_url.split('/')[-1].split('?')[0]
+                            
+                            # Avoid duplicates
+                            if not any(r['id'] == v_id for r in results):
+                                results.append({
+                                    "id": v_id,
+                                    "url": video_url,
+                                    "views": views,
+                                    "filename": f"{v_id}.mp4"
+                                })
+                except:
+                    continue
             
             await browser_context.close()
-            return found_res
+            return results
         except Exception as e:
             print(f"ERROR: {e}", file=sys.stderr)
-            return None
+            return []
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:
@@ -99,4 +105,4 @@ if __name__ == "__main__":
     if result:
         print(json.dumps(result))
     else:
-        print("null")
+        print("[]")

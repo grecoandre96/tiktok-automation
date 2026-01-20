@@ -27,9 +27,15 @@ class AIEngine:
     def rewrite_script(self, original_text):
         print("Rewriting script with AI...")
         prompt = f"""
-        You are a viral content manager. Rewrite this TikTok script to catch attention immediately. 
-        Keep the core message but change the hook and phrasing to be more energetic. 
-        Original: {original_text}
+        Sei un esperto manager di contenuti virali per TikTok Italia. 
+        Riscrivi questo script per renderlo immediatamente accattivante per un pubblico italiano.
+        REGOLE FONDAMENTALI:
+        1. Rispondi ESCLUSIVAMENTE in lingua ITALIANA.
+        2. NON usare emoticon o caratteri speciali.
+        3. Mantieni il messaggio centrale ma rendi l'introduzione (hook) molto energica.
+        4. Usa un tono colloquiale e moderno.
+        
+        Testo originale: {original_text}
         """
         response = self.client.chat.completions.create(
             model="gpt-4o",
@@ -37,8 +43,8 @@ class AIEngine:
         )
         return response.choices[0].message.content
 
-    async def generate_voiceover(self, text, output_path, voice="en-US-EmmaMultilingualNeural"):
-        print(f"Generating voiceover to {output_path}...")
+    async def generate_voiceover(self, text, output_path, voice="it-IT-ElsaNeural"):
+        print(f"Generating Italian voiceover to {output_path}...")
         communicate = edge_tts.Communicate(text, voice)
         await communicate.save(output_path)
 
