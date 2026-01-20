@@ -18,11 +18,12 @@ load_dotenv()
 
 st.set_page_config(page_title="TikTok Auto-Remixer", layout="wide")
 
-# Initialize engines
-if 'ai_engine' not in st.session_state:
+# Initialize or Refresh engines
+if 'ai_engine' not in st.session_state or st.sidebar.button("♻️ Force AI Reset"):
     st.session_state.ai_engine = AIEngine()
-if 'editor' not in st.session_state:
     st.session_state.editor = VideoEditor()
+    # If the user pushed the button, stay on the page
+    if 'processing' in st.session_state: del st.session_state.processing
 
 # Session state for workflow
 if 'video_list' not in st.session_state:
