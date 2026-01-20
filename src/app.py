@@ -34,6 +34,10 @@ if 'video_path' not in st.session_state:
     st.session_state.video_path = None
 if 'remixed_path' not in st.session_state:
     st.session_state.remixed_path = None
+if 'ai_script' not in st.session_state:
+    st.session_state.ai_script = ""
+if 'voiceover_ready' not in st.session_state:
+    st.session_state.voiceover_ready = False
 
 st.title("🤖 TikTok Viral Remixer")
 st.markdown("### Process one video at a time: Find -> Download -> Remix")
@@ -120,50 +124,56 @@ with col1:
         st.info("Use the sidebar to search for videos.")
 
 with col2:
-    st.subheader("📤 Step 3: AI Remix & Result")
-    if 'processing' in st.session_state and st.session_state.processing:
-        try:
-            with st.status("Executing AI Workflow...", expanded=True) as status:
-                video_path = st.session_state.video_path
-                base_name = os.path.basename(video_path).split('.')[0]
-                temp_audio = f"assets/temp/{base_name}_orig.mp3"
-                temp_voice = f"assets/temp/{base_name}_new_voice.mp3"
-                final_filename = f"remix_{base_name}.mp4"
+    st.subheader("📤 Step 3: AI Remix & Iteration")
+    
+    if st.session_state.video_path and os.path.exists(st.session_state.video_path):
+        video_path = st.session_state.video_path
+        base_name = os.path.basename(video_path).split('.')[0]
+        temp_audio = f"assets/temp/{base_name}_orig.mp3"
+        temp_voice = f"assets/temp/{base_name}_new_voice.mp3"
+        final_filename = f"remix_{base_name}.mp4"
 
-                st.write("🎵 Extracting original audio...")
-                st.session_state.editor.extract_audio(video_path, temp_audio)
-                
-                st.write("📝 Transcribing with Whisper...")
+        # 1. GENERATE / REWRITE SCRIPT
+        st.markdown("#### 1. Script Generation")
+        if st.button("📝 Generate/Rewrite Script"):
+            with st.spinner("AI is thinking..."):
+                if not os.path.exists(temp_audio):
+                    st.session_state.editor.extract_audio(video_path, temp_audio)
                 original_text = st.session_state.ai_engine.transcribe(temp_audio)
-                st.text_area("Original Script:", original_text, height=100)
-                
-                st.write(f"🤖 Rewriting script style: {script_style}...")
-                new_script = st.session_state.ai_engine.rewrite_script(original_text, style=script_style)
-                st.text_area("New AI Script:", new_script, height=100)
-                
-                st.write(f"🎙️ Generating Voiceover ({voice_id})...")
-                asyncio.run(st.session_state.ai_engine.generate_voiceover(new_script, temp_voice, voice=voice_id))
-                
-                st.write("🎬 Reassembling final video...")
-                # No mask anymore as per user request
-                final_path = st.session_state.editor.remix_video(video_path, temp_voice, final_filename)
-                
-                st.session_state.remixed_path = final_path
-                status.update(label="Remix Complete!", state="complete", expanded=False)
+                st.session_state.ai_script = st.session_state.ai_engine.rewrite_script(original_text, style=script_style)
+                st.session_state.voiceover_ready = False # Reset voice if script changes
+        
+        if st.session_state.ai_script:
+            # Allow manual editing of the script before voiceover
+            st.session_state.ai_script = st.text_area("Edit AI Script:", st.session_state.ai_script, height=150)
             
-            st.balloons()
-        except Exception as e:
-            st.error(f"Error during remix: {e}")
-        finally:
-            st.session_state.processing = False
+            # 2. GENERATE VOICEOVER
+            st.markdown("#### 2. Voiceover")
+            if st.button("🎙️ Generate Voiceover"):
+                with st.spinner(f"Generating voice with {voice_id}..."):
+                    asyncio.run(st.session_state.ai_engine.generate_voiceover(st.session_state.ai_script, temp_voice, voice=voice_id))
+                    st.session_state.voiceover_ready = True
+                    st.success("Voiceover ready!")
+            
+            if st.session_state.voiceover_ready:
+                st.audio(temp_voice)
+                
+                # 3. FINAL REMIX
+                st.markdown("#### 3. Final Assembly")
+                if st.button("🎬 Create Final Video"):
+                    with st.spinner("Assembling video..."):
+                        final_path = st.session_state.editor.remix_video(video_path, temp_voice, final_filename)
+                        st.session_state.remixed_path = final_path
+                        st.balloons()
 
-    if st.session_state.remixed_path and os.path.exists(st.session_state.remixed_path):
-        st.success("Final Remixed Video:")
-        st.video(st.session_state.remixed_path)
-        with open(st.session_state.remixed_path, "rb") as f:
-            st.download_button("💾 Download Final Video", f, file_name=os.path.basename(st.session_state.remixed_path))
+        if st.session_state.remixed_path and os.path.exists(st.session_state.remixed_path):
+            st.divider()
+            st.success("Target Achieved! Final Remix:")
+            st.video(st.session_state.remixed_path)
+            with open(st.session_state.remixed_path, "rb") as f:
+                st.download_button("💾 Download Final Video", f, file_name=os.path.basename(st.session_state.remixed_path))
     else:
-        st.info("The remixed video will appear here.")
+        st.info("Download a video first to start the AI Remix process.")
 
 st.markdown("---")
 st.caption("Workflow: Search -> Choose -> Download -> Remix.")
