@@ -1,0 +1,11 @@
+venv/
+.env
+__pycache__/
+*.mp3
+*.mp4
+assets/downloaded/*
+assets/processed/*
+assets/temp/*
+tiktok_session/
+.ipynb_checkpoints/
+*.log

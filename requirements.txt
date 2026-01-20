@@ -1,0 +1,9 @@
+streamlit
+playwright
+moviepy
+openai-whisper
+openai
+edge-tts
+requests
+python-dotenv
+yt-dlp
