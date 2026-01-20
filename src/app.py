@@ -45,6 +45,17 @@ with st.sidebar:
     max_views = st.number_input("Max Views", value=100000, step=1000)
     
     st.divider()
+    st.header("2. AI Settings")
+    script_style = st.selectbox("Script Style", ["Virale", "Educativo", "Misterioso", "Emozionale"])
+    voice_name = st.selectbox("Voice", [
+        "it-IT-ElsaNeural (Female)", 
+        "it-IT-IsabellaNeural (Female)", 
+        "it-IT-DiegoNeural (Male)", 
+        "it-IT-GiuseppeMultilingualNeural (Male)"
+    ])
+    voice_id = voice_name.split(" ")[0]
+    
+    st.divider()
     
     if st.button("🔎 Search Viral Videos"):
         with st.spinner("Searching TikTok for top matches..."):
@@ -125,12 +136,12 @@ with col2:
                 original_text = st.session_state.ai_engine.transcribe(temp_audio)
                 st.text_area("Original Script:", original_text, height=100)
                 
-                st.write("🤖 Rewriting script with GPT-4o...")
-                new_script = st.session_state.ai_engine.rewrite_script(original_text)
+                st.write(f"🤖 Rewriting script style: {script_style}...")
+                new_script = st.session_state.ai_engine.rewrite_script(original_text, style=script_style)
                 st.text_area("New AI Script:", new_script, height=100)
                 
-                st.write("🎙️ Generating Italian Voiceover...")
-                asyncio.run(st.session_state.ai_engine.generate_voiceover(new_script, temp_voice))
+                st.write(f"🎙️ Generating Voiceover ({voice_id})...")
+                asyncio.run(st.session_state.ai_engine.generate_voiceover(new_script, temp_voice, voice=voice_id))
                 
                 st.write("🎬 Reassembling final video...")
                 # No mask anymore as per user request
