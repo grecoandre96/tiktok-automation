@@ -130,7 +130,7 @@ with st.sidebar:
         with st.spinner("Downloading from external source..."):
             video_id = f"manual_{int(time.time())}"
             filename = f"{video_id}.mp4"
-            output_path = os.path.join(DOWNLOAD_DIR, filename)
+            output_path = os.path.abspath(os.path.join(DOWNLOAD_DIR, filename))
             if download_tiktok_video(manual_url, output_path):
                 st.session_state.video_path = output_path
                 st.session_state.current_video = {"id": video_id, "url": manual_url, "filename": filename}
@@ -185,9 +185,10 @@ with col1:
 with col2:
     st.subheader("📤 Step 3: AI Remixing")
     
-    # Check if a video is ready for processing (from Search or Magic Import)
-    if st.session_state.video_path and os.path.exists(st.session_state.video_path):
-        video_path = st.session_state.video_path
+    # FINAL CHECK: DO WE HAVE A VIDEO?
+    ready_video = st.session_state.video_path
+    if ready_video and os.path.exists(ready_video):
+        video_path = ready_video
         base_name = os.path.basename(video_path).split('.')[0]
         temp_audio = os.path.join(TEMP_DIR, f"{base_name}_orig.mp3")
         temp_voice = os.path.join(TEMP_DIR, f"{base_name}_new_voice.mp3")
