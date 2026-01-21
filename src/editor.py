@@ -1,4 +1,4 @@
-from moviepy import VideoFileClip, AudioFileClip, CompositeVideoClip
+from moviepy import VideoFileClip, AudioFileClip, CompositeVideoClip, vfx
 import os
 
 class VideoEditor:
@@ -15,26 +15,52 @@ class VideoEditor:
         video.close()
         return audio_output_path
 
-    def remix_video(self, video_path, voiceover_path, output_filename):
-        print(f"Remixing video: {video_path}")
+    def remix_video(self, video_path, voiceover_path, output_filename, 
+                   flip=False, speed=1.0, remove_audio_only=False):
+        print(f"Remixing video: {video_path} (Anti-Detection: Flip={flip}, Speed={speed})")
         
-        # Load video and remove audio
-        video = VideoFileClip(video_path).without_audio()
+        # Load video
+        video = VideoFileClip(video_path)
         
-        # Load new audio
-        audio = AudioFileClip(voiceover_path)
-        
-        if audio.duration > video.duration:
-            audio = audio.with_duration(video.duration)
-        
-        # Set audio to video
-        final_video = video.with_audio(audio)
+        # 1. ANTI-DETECTION: Flip horizontally
+        if flip:
+            video = video.rotated(180) # Or use horizontal flip if available in vfx
+            # In moviepy v2, horizontal flip is often video.fx(vfx.mirror_x)
+            video = video.fx(vfx.mirror_x)
+
+        # 2. ANTI-DETECTION: Subtle Speed Change
+        if speed != 1.0:
+            video = video.fx(vfx.time_stretch, speed)
+
+        # Handle Audio
+        if remove_audio_only:
+            # Output silent video for TikTok songs
+            final_video = video.without_audio()
+        else:
+            # Load new AI audio
+            video = video.without_audio()
+            audio = AudioFileClip(voiceover_path)
+            
+            # Sync duration
+            if audio.duration > video.duration:
+                audio = audio.with_duration(video.duration)
+            
+            final_video = video.with_audio(audio)
         
         output_path = os.path.join(self.output_dir, output_filename)
-        final_video.write_videofile(output_path, codec="libx264", audio_codec="aac")
+        
+        # Rendering with high quality presets
+        final_video.write_videofile(
+            output_path, 
+            codec="libx264", 
+            audio_codec="aac" if not remove_audio_only else None,
+            temp_audiofile=os.path.join(self.temp_dir, "temp-audio.m4a"),
+            remove_temp=True
+        )
         
         video.close()
-        audio.close()
+        if not remove_audio_only:
+            audio.close()
         
         return output_path
 

@@ -84,6 +84,12 @@ with st.sidebar:
     
     st.divider()
     
+    st.header("3. Anti-Detection (Viral)")
+    do_flip = st.checkbox("Flip Horizontally (Mirror)", value=True, help="Changes pixel data, very effective.")
+    speed_mod = st.slider("Subtle Speed Change", 0.95, 1.05, 1.01, 0.01, help="Speeds up/slows down subtly to bypass finger-printing.")
+    
+    st.divider()
+    
     if st.button("🔎 Search TikTok", use_container_width=True):
         with st.spinner("Finding viral matches..."):
             # Reset state for new search
@@ -156,46 +162,61 @@ with col2:
         temp_audio = f"assets/temp/{base_name}_orig.mp3"
         temp_voice = f"assets/temp/{base_name}_new_voice.mp3"
         
-        # 1. SCRIPT GENERATION
-        st.markdown("#### 1. Generate Script")
-        if st.button("📝 Create AI Script", use_container_width=True):
-            with st.spinner("Analyzing audio and rewriting..."):
-                if not os.path.exists(temp_audio):
-                    st.session_state.editor.extract_audio(video_path, temp_audio)
-                original_text = st.session_state.ai_engine.transcribe(temp_audio)
-                st.session_state.ai_script = st.session_state.ai_engine.rewrite_script(original_text, style=script_style)
-                st.session_state.voiceover_ready = False
-        
-        if st.session_state.ai_script:
-            st.session_state.ai_script = st.text_area("Review/Edit Script:", st.session_state.ai_script, height=150)
-            
-            # 2. VOICEOVER GENERATION
-            st.markdown("#### 2. AI Voiceover")
-            if st.button("🎙️ Generate Voiceover", use_container_width=True):
-                with st.spinner(f"Generating voice via {provider_key}: {voice_id}..."):
-                    asyncio.run(st.session_state.ai_engine.generate_voiceover(
-                        st.session_state.ai_script, 
-                        temp_voice, 
-                        voice=voice_id, 
-                        provider=provider_key
-                    ))
-                    st.session_state.voiceover_ready = True
-            
-            if st.session_state.voiceover_ready:
-                st.audio(temp_voice)
-                
-                # 3. FINAL VIDEO ASSEMBLY
-                st.markdown("#### 3. Render Final Video")
-                default_name = f"remix_{base_name}_{script_style}.mp4"
-                final_filename = st.text_input("Save as:", value=default_name)
-                
-                if not final_filename.endswith(".mp4"): final_filename += ".mp4"
+        # 0. CHOOSE AUDIO STRATEGY
+        st.markdown("#### 0. Audio Strategy")
+        audio_choice = st.radio("Strategy", ["Use AI Voiceover", "Silent Mode (Add song on TikTok)"], horizontal=True)
+        is_silent = "Silent" in audio_choice
 
-                if st.button("🎬 Assemble & Render", use_container_width=True):
-                    with st.spinner("Rendering final file..."):
-                        final_path = st.session_state.editor.remix_video(video_path, temp_voice, final_filename)
-                        st.session_state.remixed_path = final_path
-                        st.balloons()
+        if not is_silent:
+            # 1. SCRIPT GENERATION
+            st.markdown("#### 1. Generate Script")
+            if st.button("📝 Create AI Script", use_container_width=True):
+                with st.spinner("Analyzing audio and rewriting..."):
+                    if not os.path.exists(temp_audio):
+                        st.session_state.editor.extract_audio(video_path, temp_audio)
+                    original_text = st.session_state.ai_engine.transcribe(temp_audio)
+                    st.session_state.ai_script = st.session_state.ai_engine.rewrite_script(original_text, style=script_style)
+                    st.session_state.voiceover_ready = False
+            
+            if st.session_state.ai_script:
+                st.session_state.ai_script = st.text_area("Review/Edit Script:", st.session_state.ai_script, height=150)
+                
+                # 2. VOICEOVER GENERATION
+                st.markdown("#### 2. AI Voiceover")
+                if st.button("🎙️ Generate Voiceover", use_container_width=True):
+                    with st.spinner(f"Generating voice via {provider_key}: {voice_id}..."):
+                        asyncio.run(st.session_state.ai_engine.generate_voiceover(
+                            st.session_state.ai_script, 
+                            temp_voice, 
+                            voice=voice_id, 
+                            provider=provider_key
+                        ))
+                        st.session_state.voiceover_ready = True
+                
+                if st.session_state.voiceover_ready:
+                    st.audio(temp_voice)
+        
+        # 3. FINAL ASSEMBLY (Common for both strategies)
+        if is_silent or st.session_state.voiceover_ready:
+            st.markdown("#### 3. Render Final Video")
+            suffix = "silent" if is_silent else script_style
+            default_name = f"remix_{base_name}_{suffix}.mp4"
+            final_filename = st.text_input("Save as:", value=default_name)
+            
+            if not final_filename.endswith(".mp4"): final_filename += ".mp4"
+
+            if st.button("🎬 Assemble & Render", use_container_width=True):
+                with st.spinner(f"Rendering with Anti-Detection (Flip={do_flip}, Speed={speed_mod})..."):
+                    final_path = st.session_state.editor.remix_video(
+                        video_path, 
+                        temp_voice if not is_silent else None, 
+                        final_filename,
+                        flip=do_flip,
+                        speed=speed_mod,
+                        remove_audio_only=is_silent
+                    )
+                    st.session_state.remixed_path = final_path
+                    st.balloons()
 
         # Final Result Display
         if st.session_state.remixed_path and os.path.exists(st.session_state.remixed_path):
