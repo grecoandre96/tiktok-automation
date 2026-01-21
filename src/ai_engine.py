@@ -56,10 +56,45 @@ class AIEngine:
         )
         return response.choices[0].message.content
 
-    async def generate_voiceover(self, text, output_path, voice="it-IT-ElsaNeural"):
-        print(f"Generating voiceover ({voice}) to {output_path}...")
-        communicate = edge_tts.Communicate(text, voice)
-        await communicate.save(output_path)
+    async def generate_voiceover(self, text, output_path, voice="it-IT-ElsaNeural", provider="Edge"):
+        print(f"Generating voiceover via {provider} ({voice}) to {output_path}...")
+        
+        if provider == "OpenAI":
+            # Better quality, more human-like (uses your existing OpenAI Key)
+            response = self.client.audio.speech.create(
+                model="tts-1-hd", # HD for maximum realism
+                voice=voice.split(" ")[0].lower(), # e.g., 'onyx', 'nova'
+                input=text
+            )
+            response.stream_to_file(output_path)
+            
+        elif provider == "ElevenLabs":
+            # The absolute best for emotions (requires API Key)
+            api_key = os.getenv("ELEVENLABS_API_KEY")
+            if not api_key:
+                raise Exception("ElevenLabs API Key missing in .env")
+            
+            import requests
+            # Mapping or default voice ID for ElevenLabs
+            voice_id = "pNInz6obpgDQGcFmaJgB" # Example 'Adam' or use dynamic
+            url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+            headers = {"xi-api-key": api_key, "Content-Type": "application/json"}
+            data = {
+                "text": text,
+                "model_id": "eleven_multilingual_v2",
+                "voice_settings": {"stability": 0.5, "similarity_boost": 0.75, "style": 0.5, "use_speaker_boost": True}
+            }
+            res = requests.post(url, json=data, headers=headers)
+            if res.status_code == 200:
+                with open(output_path, "wb") as f:
+                    f.write(res.content)
+            else:
+                raise Exception(f"ElevenLabs error: {res.text}")
+
+        else:
+            # Standard free version (Edge TTS)
+            communicate = edge_tts.Communicate(text, voice)
+            await communicate.save(output_path)
 
 if __name__ == "__main__":
     # Test logic

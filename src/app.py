@@ -54,12 +54,32 @@ with st.sidebar:
     
     st.header("2. AI Customization")
     script_style = st.selectbox("Tone & Style", ["Virale", "Educativo", "Misterioso", "Emozionale"])
-    voice_name = st.selectbox("Voice Talent", [
-        "it-IT-ElsaNeural (Female)", 
-        "it-IT-IsabellaNeural (Female)", 
-        "it-IT-DiegoNeural (Male)", 
-        "it-IT-GiuseppeMultilingualNeural (Male)"
-    ])
+    
+    voice_provider = st.radio("Voice Provider", ["Edge (Free)", "OpenAI HD (Premium)", "ElevenLabs (Pro)"], horizontal=True)
+    
+    if "Edge" in voice_provider:
+        voice_options = [
+            "it-IT-ElsaNeural (Female)", 
+            "it-IT-IsabellaNeural (Female)", 
+            "it-IT-DiegoNeural (Male)", 
+            "it-IT-GiuseppeMultilingualNeural (Male)"
+        ]
+        provider_key = "Edge"
+    elif "OpenAI" in voice_provider:
+        voice_options = [
+            "Onyx (Male - Deep & Warm)",
+            "Nova (Female - Energetic)",
+            "Shimmer (Female - Soft)",
+            "Alloy (Neutral - Balanced)",
+            "Echo (Male - Calm)",
+            "Fable (Neutral - Narrative)"
+        ]
+        provider_key = "OpenAI"
+    else:
+        voice_options = ["Standard ElevenLabs Voice"] # Expandable
+        provider_key = "ElevenLabs"
+
+    voice_name = st.selectbox("Select Voice", voice_options)
     voice_id = voice_name.split(" ")[0]
     
     st.divider()
@@ -152,8 +172,13 @@ with col2:
             # 2. VOICEOVER GENERATION
             st.markdown("#### 2. AI Voiceover")
             if st.button("🎙️ Generate Voiceover", use_container_width=True):
-                with st.spinner(f"Generating voice: {voice_id}..."):
-                    asyncio.run(st.session_state.ai_engine.generate_voiceover(st.session_state.ai_script, temp_voice, voice=voice_id))
+                with st.spinner(f"Generating voice via {provider_key}: {voice_id}..."):
+                    asyncio.run(st.session_state.ai_engine.generate_voiceover(
+                        st.session_state.ai_script, 
+                        temp_voice, 
+                        voice=voice_id, 
+                        provider=provider_key
+                    ))
                     st.session_state.voiceover_ready = True
             
             if st.session_state.voiceover_ready:
