@@ -1,4 +1,5 @@
-from moviepy import VideoFileClip, AudioFileClip, CompositeVideoClip, vfx
+from moviepy import VideoFileClip, AudioFileClip, CompositeVideoClip
+from moviepy.video.fx import MirrorX, MultiplySpeed
 import os
 
 class VideoEditor:
@@ -22,13 +23,15 @@ class VideoEditor:
         # Load video
         video = VideoFileClip(video_path)
         
-        # 1. ANTI-DETECTION: Flip horizontally
+        # 1 & 2. ANTI-DETECTION via MoviePy v2 Effects
+        effects = []
         if flip:
-            video = vfx.mirror_x(video)
-
-        # 2. ANTI-DETECTION: Subtle Speed Change
+            effects.append(MirrorX())
         if speed != 1.0:
-            video = vfx.time_stretch(video, factor=speed)
+            effects.append(MultiplySpeed(factor=speed))
+            
+        if effects:
+            video = video.with_effects(effects)
 
         # Handle Audio
         if remove_audio_only:
