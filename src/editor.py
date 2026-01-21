@@ -1,5 +1,5 @@
 from moviepy import VideoFileClip, AudioFileClip, CompositeVideoClip
-from moviepy.video.fx import MirrorX, MultiplySpeed
+from moviepy.video.fx import MirrorX, MultiplySpeed, MultiplyColor
 import os
 
 class VideoEditor:
@@ -23,12 +23,20 @@ class VideoEditor:
         # Load video
         video = VideoFileClip(video_path)
         
-        # 1 & 2. ANTI-DETECTION via MoviePy v2 Effects
+        # --- ANTI-DETECTION: CORE FILTERS ---
         effects = []
         if flip:
             effects.append(MirrorX())
         if speed != 1.0:
             effects.append(MultiplySpeed(factor=speed))
+        
+        # 3. EXTRA ANTI-DETECTION: Subtle Zoom/Crop (removes edge pixels/watermarks)
+        w, h = video.size
+        video = video.cropped(x_center=w/2, y_center=h/2, width=w/1.1, height=h/1.1)
+        video = video.resized(width=w, height=h) 
+
+        # 4. EXTRA ANTI-DETECTION: Subtle Color Adjustment (Change hash)
+        effects.append(MultiplyColor(1.02))
             
         if effects:
             video = video.with_effects(effects)
