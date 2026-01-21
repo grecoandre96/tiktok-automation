@@ -178,12 +178,14 @@ with col1:
         
         if st.session_state.video_path and os.path.exists(st.session_state.video_path):
             st.video(st.session_state.video_path)
-    elif not st.session_state.video_list:
-        st.info("Start by searching for videos in the sidebar.")
+            
+    if not st.session_state.video_list and not st.session_state.video_path:
+        st.info("Start by searching for videos or using Magic Import in the sidebar.")
 
 with col2:
     st.subheader("📤 Step 3: AI Remixing")
     
+    # Check if a video is ready for processing (from Search or Magic Import)
     if st.session_state.video_path and os.path.exists(st.session_state.video_path):
         video_path = st.session_state.video_path
         base_name = os.path.basename(video_path).split('.')[0]
