@@ -58,13 +58,20 @@ class VideoEditor:
         else:
             # Load new AI audio
             video = video.without_audio()
-            audio = AudioFileClip(voiceover_path)
+            audio_clip = AudioFileClip(voiceover_path)
+            
+            # 5. AUDIO ANTI-DETECTION: Background Noise Injection
+            # We add a very subtle lo-fi or ambiance track to break 'Audio Hashing'
+            # For now, we simulate this by adjusting the volume/panning or 
+            # if we had a library of noises, we would overlay one.
+            # Simplified: Use a slightly different volume/envelope to change signature
+            audio_clip = audio_clip.with_volume_scaling(0.98) 
             
             # Sync duration
-            if audio.duration > video.duration:
-                audio = audio.with_duration(video.duration)
+            if audio_clip.duration > video.duration:
+                audio_clip = audio_clip.with_duration(video.duration)
             
-            final_video = video.with_audio(audio)
+            final_video = video.with_audio(audio_clip)
         
         output_path = os.path.join(self.output_dir, output_filename)
         

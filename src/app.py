@@ -4,6 +4,7 @@ import subprocess
 import sys
 import json
 import asyncio
+import time
 from dotenv import load_dotenv
 from ai_engine import AIEngine
 from editor import VideoEditor
@@ -115,6 +116,22 @@ with st.sidebar:
             except Exception as e:
                 st.error(f"Scraper error: {e}")
 
+    st.divider()
+    st.header("🔗 Magic Import (Any URL)")
+    manual_url = st.text_input("Paste URL (YouTube, Pinterest, etc.)", placeholder="https://...")
+    if st.button("🚀 Import Video", use_container_width=True) and manual_url:
+        with st.spinner("Downloading from external source..."):
+            video_id = f"manual_{int(time.time())}"
+            filename = f"{video_id}.mp4"
+            output_path = f"assets/downloaded/{filename}"
+            if download_tiktok_video(manual_url, output_path):
+                st.session_state.video_path = output_path
+                st.session_state.current_video = {"id": video_id, "url": manual_url, "filename": filename}
+                st.success("Video imported successfully!")
+                st.rerun()
+            else:
+                st.error("Import failed. Check the URL.")
+
 # --- MAIN INTERFACE ---
 col1, col2 = st.columns(2)
 
@@ -139,14 +156,18 @@ with col1:
         v_data = st.session_state.current_video
         st.info(f"**Processing:** {v_data['url']}")
         
-        if st.button("⬇️ Download This Video", use_container_width=True):
-            with st.spinner("Downloading (No Watermark)..."):
-                path = os.path.join("assets/downloaded", v_data['filename'])
-                if download_tiktok_video(v_data['url'], path):
-                    st.session_state.video_path = path
-                    st.success("Downloaded!")
-                else:
-                    st.error("Download failed. TikTok might be blocking.")
+        if st.session_state.video_path is None:
+            if st.button("⬇️ Download This Video", use_container_width=True):
+                with st.spinner("Downloading (No Watermark)..."):
+                    path = os.path.join("assets/downloaded", v_data.get('filename', f"{v_data['id']}.mp4"))
+                    if download_tiktok_video(v_data['url'], path):
+                        st.session_state.video_path = path
+                        st.success("Downloaded!")
+                        st.rerun()
+                    else:
+                        st.error("Download failed. TikTok might be blocking.")
+        else:
+            st.success("✅ Video file ready!")
         
         if st.session_state.video_path and os.path.exists(st.session_state.video_path):
             st.video(st.session_state.video_path)
