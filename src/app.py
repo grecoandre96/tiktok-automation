@@ -12,6 +12,13 @@ from downloader import download_tiktok_video
 
 # --- CONFIGURATION & PATHS ---
 load_dotenv()
+BASE_DIR = os.getcwd()
+TEMP_DIR = os.path.join(BASE_DIR, "assets", "temp")
+PROCESSED_DIR = os.path.join(BASE_DIR, "assets", "processed")
+DOWNLOAD_DIR = os.path.join(BASE_DIR, "assets", "downloaded")
+
+for d in [TEMP_DIR, PROCESSED_DIR, DOWNLOAD_DIR]:
+    if not os.path.exists(d): os.makedirs(d)
 
 # Add FFmpeg to PATH for Windows (installed via winget)
 ffmpeg_path = r"C:\Users\utente\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.0.1-full_build\bin"
@@ -19,7 +26,7 @@ if os.path.exists(ffmpeg_path):
     os.environ["PATH"] += os.pathsep + ffmpeg_path
 
 # --- PAGE SETUP ---
-st.set_page_config(page_title="TikTok Auto-Remixer", layout="wide", page_icon="🤖")
+st.set_page_config(page_title="TikTok Viral Remixer", layout="wide", page_icon="🎬")
 
 # Initialize or Refresh Engines
 if 'ai_engine' not in st.session_state or st.sidebar.button("♻️ Force AI/Editor Reset"):
@@ -123,7 +130,7 @@ with st.sidebar:
         with st.spinner("Downloading from external source..."):
             video_id = f"manual_{int(time.time())}"
             filename = f"{video_id}.mp4"
-            output_path = f"assets/downloaded/{filename}"
+            output_path = os.path.join(DOWNLOAD_DIR, filename)
             if download_tiktok_video(manual_url, output_path):
                 st.session_state.video_path = output_path
                 st.session_state.current_video = {"id": video_id, "url": manual_url, "filename": filename}
@@ -159,7 +166,7 @@ with col1:
         if st.session_state.video_path is None:
             if st.button("⬇️ Download This Video", use_container_width=True):
                 with st.spinner("Downloading (No Watermark)..."):
-                    path = os.path.join("assets/downloaded", v_data.get('filename', f"{v_data['id']}.mp4"))
+                    path = os.path.join(DOWNLOAD_DIR, v_data.get('filename', f"{v_data['id']}.mp4"))
                     if download_tiktok_video(v_data['url'], path):
                         st.session_state.video_path = path
                         st.success("Downloaded!")
@@ -180,8 +187,8 @@ with col2:
     if st.session_state.video_path and os.path.exists(st.session_state.video_path):
         video_path = st.session_state.video_path
         base_name = os.path.basename(video_path).split('.')[0]
-        temp_audio = f"assets/temp/{base_name}_orig.mp3"
-        temp_voice = f"assets/temp/{base_name}_new_voice.mp3"
+        temp_audio = os.path.join(TEMP_DIR, f"{base_name}_orig.mp3")
+        temp_voice = os.path.join(TEMP_DIR, f"{base_name}_new_voice.mp3")
         
         # 0. CHOOSE AUDIO STRATEGY
         st.markdown("#### 0. Audio Strategy")
