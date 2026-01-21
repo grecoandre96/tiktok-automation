@@ -88,7 +88,7 @@ class VideoEditor:
         
         video.close()
         if not remove_audio_only:
-            audio.close()
+            audio_clip.close()
         
         return output_path
 
