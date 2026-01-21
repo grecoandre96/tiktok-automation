@@ -1,5 +1,6 @@
 from moviepy import VideoFileClip, AudioFileClip, CompositeVideoClip
 from moviepy.video.fx import MirrorX, MultiplySpeed, MultiplyColor
+from moviepy.audio.fx import MultiplyVolume
 import os
 
 class VideoEditor:
@@ -65,7 +66,8 @@ class VideoEditor:
             # For now, we simulate this by adjusting the volume/panning or 
             # if we had a library of noises, we would overlay one.
             # Simplified: Use a slightly different volume/envelope to change signature
-            audio_clip = audio_clip.with_volume_scaling(0.98) 
+            audio_effects = [MultiplyVolume(0.98)]
+            audio_clip = audio_clip.with_effects(audio_effects)
             
             # Sync duration
             if audio_clip.duration > video.duration:
