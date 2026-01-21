@@ -1,5 +1,6 @@
 streamlit
 playwright
+playwright-stealth
 moviepy
 openai-whisper
 openai
