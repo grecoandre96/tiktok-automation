@@ -24,13 +24,11 @@ class VideoEditor:
         
         # 1. ANTI-DETECTION: Flip horizontally
         if flip:
-            video = video.rotated(180) # Or use horizontal flip if available in vfx
-            # In moviepy v2, horizontal flip is often video.fx(vfx.mirror_x)
-            video = video.fx(vfx.mirror_x)
+            video = vfx.mirror_x(video)
 
         # 2. ANTI-DETECTION: Subtle Speed Change
         if speed != 1.0:
-            video = video.fx(vfx.time_stretch, speed)
+            video = vfx.time_stretch(video, factor=speed)
 
         # Handle Audio
         if remove_audio_only:
