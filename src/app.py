@@ -22,7 +22,7 @@ for d in [TEMP_DIR, PROCESSED_DIR, DOWNLOAD_DIR]:
 
 # Add FFmpeg to PATH for Windows (installed via winget)
 ffmpeg_path = r"C:\Users\utente\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.0.1-full_build\bin"
-if os.path.exists(ffmpeg_path):
+if os.path.exists(ffmpeg_path) and ffmpeg_path not in os.environ["PATH"]:
     os.environ["PATH"] += os.pathsep + ffmpeg_path
 
 # --- PAGE SETUP ---
