@@ -63,15 +63,10 @@ class VideoHandler:
     def download_from_url(self, url: str, filename: Optional[str] = None) -> Optional[VideoFile]:
         """
         Download a video from a URL using yt-dlp.
-        
-        Args:
-            url: Video URL (YouTube, TikTok, Instagram, etc.)
-            filename: Optional custom filename
-            
-        Returns:
-            VideoFile object or None if download failed
         """
         try:
+            from config.settings import BASE_DIR, FFMPEG_PATH
+            
             # Generate filename
             if not filename:
                 file_id = generate_unique_id("download")
@@ -79,24 +74,34 @@ class VideoHandler:
             
             file_path = self.uploads_dir / filename
             
-            # yt-dlp command
-            cmd = [
-                sys.executable, "-m", "yt_dlp",
+            # Use absolute path to yt-dlp in venv
+            yt_dlp_path = str(BASE_DIR / "venv" / "Scripts" / "yt-dlp.exe")
+            
+            # Base yt-dlp command
+            base_cmd = [
+                yt_dlp_path,
                 "--no-playlist",
-                "--cookies-from-browser", "chrome",
-                "--user-agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15",
+                "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 "--force-ipv4",
+                "--no-check-certificates",
+                "--ffmpeg-location", str(FFMPEG_PATH),
+                "--extractor-args", "youtube:player-client=android,web",
                 "--recode-video", "mp4",
-                "-o", str(file_path),
-                url
+                "-o", str(file_path)
             ]
             
-            logger.info(f"Downloading video from: {url}")
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            # Try 1: Standard download (most reliable now)
+            logger.info(f"Attempting download (standard) from: {url}")
+            result = subprocess.run(base_cmd + [url], capture_output=True, text=True, timeout=180)
+            
+            # Try 2: With cookies if standard fails
+            if result.returncode != 0:
+                logger.warning(f"Standard download failed. Trying with Chrome cookies. Error: {result.stderr[:200]}")
+                cmd_with_cookies = base_cmd + ["--cookies-from-browser", "chrome", url]
+                result = subprocess.run(cmd_with_cookies, capture_output=True, text=True, timeout=180)
             
             if result.returncode == 0 and file_path.exists():
                 logger.info(f"Successfully downloaded: {filename}")
-                
                 return VideoFile(
                     id=generate_unique_id("download"),
                     path=file_path,
@@ -106,8 +111,14 @@ class VideoHandler:
                     size_bytes=get_file_size(file_path)
                 )
             else:
-                logger.error(f"Download failed: {result.stderr}")
+                stderr = result.stderr if result.stderr else "No error output"
+                stdout = result.stdout if result.stdout else "No standard output"
+                logger.error(f"Download FAILED.\nSTDOUT: {stdout[:500]}\nSTDERR: {stderr[:500]}")
                 return None
+                
+        except Exception as e:
+            logger.error(f"Critical error in download_from_url: {str(e)}")
+            raise e
                 
         except subprocess.TimeoutExpired:
             logger.error("Download timeout exceeded (120s)")

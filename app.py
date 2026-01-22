@@ -148,15 +148,20 @@ with col1:
         
         if st.button("⬇️ Download Video", use_container_width=True) and video_url:
             with st.spinner("Downloading video... This may take a minute."):
-                video = st.session_state.video_handler.download_from_url(video_url)
-                if video:
-                    # Get duration
-                    video.duration = st.session_state.video_handler.get_video_duration(video.path)
-                    st.session_state.current_video = video
-                    st.success(f"✅ Video downloaded: {video.filename}")
-                    st.rerun()
-                else:
-                    st.error("❌ Download failed. Check the URL or try uploading the file manually.")
+                try:
+                    video = st.session_state.video_handler.download_from_url(video_url)
+                    if video:
+                        # Get duration
+                        video.duration = st.session_state.video_handler.get_video_duration(video.path)
+                        st.session_state.current_video = video
+                        st.success(f"✅ Video downloaded: {video.filename}")
+                        st.rerun()
+                    else:
+                        st.error("❌ Download failed. yt-dlp couldn't process the URL. Try another link or check the logs.")
+                except Exception as e:
+                    st.error(f"❌ Internal Error: {str(e)}")
+                    import traceback
+                    st.code(traceback.format_exc())
     
     # Display current video
     if st.session_state.current_video:
