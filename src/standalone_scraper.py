@@ -30,7 +30,8 @@ async def search_tiktok(query, min_views, max_views, max_results=10):
             
             # Wait for results or captcha
             try:
-                await page.wait_for_selector('[data-e2e="search_video-item"]', timeout=30000)
+                # Try multiple selectors for video items
+                await page.wait_for_selector('[data-e2e="search_video-item"], .css-1s9j1be-DivVideoItemContainer, .video-feed-item', timeout=30000)
             except:
                 print("DEBUG: Timeout waiting for initial results. Waiting for manual interaction...", file=sys.stderr)
                 await asyncio.sleep(20)
@@ -51,7 +52,8 @@ async def search_tiktok(query, min_views, max_views, max_results=10):
                 await page.mouse.wheel(0, 1500)
                 await asyncio.sleep(1)
 
-            videos = await page.query_selector_all('[data-e2e="search_video-item"]')
+            # Query for all potential video items
+            videos = await page.query_selector_all('[data-e2e="search_video-item"], .css-1s9j1be-DivVideoItemContainer, .video-feed-item')
             
             for v in videos:
                 if len(results) >= max_results:
@@ -101,8 +103,17 @@ if __name__ == "__main__":
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
         
-    result = asyncio.run(search_tiktok(q, min_v, max_v))
-    if result:
-        print(json.dumps(result))
-    else:
+    try:
+        result = asyncio.run(search_tiktok(q, min_v, max_v))
+        if result:
+            print(json.dumps(result))
+        else:
+            print("[]")
+    except Exception as e:
+        # Log to stderr but output empty JSON to stdout so app.py doesn't crash
+        print(f"CRITICAL ERROR: {e}", file=sys.stderr)
         print("[]")
+        sys.exit(0)
+    except KeyboardInterrupt:
+        print("[]")
+        sys.exit(0)
