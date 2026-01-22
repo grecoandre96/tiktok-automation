@@ -1,11 +1,38 @@
-venv/
-.env
+# Python
 __pycache__/
-*.mp3
-*.mp4
-assets/downloaded/*
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+assets/uploads/*
 assets/processed/*
 assets/temp/*
-tiktok_session/
-.ipynb_checkpoints/
+!assets/uploads/.gitkeep
+!assets/processed/.gitkeep
+!assets/temp/.gitkeep
+
+# Logs
 *.log
+
+# Agent
+.agent/

@@ -1,10 +1,14 @@
-streamlit
-playwright
-playwright-stealth
-moviepy
-openai-whisper
-openai
-edge-tts
-requests
-python-dotenv
-yt-dlp
+# Core dependencies
+streamlit>=1.30.0
+python-dotenv>=1.0.0
+
+# Video processing
+moviepy>=2.0.0
+yt-dlp>=2024.0.0
+
+# AI services
+openai>=1.10.0
+openai-whisper>=20231117
+
+# Utilities
+requests>=2.31.0
